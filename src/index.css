@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary: #C2714F;
+    --color-accent: #7A9E7E;
+    --color-background: #FAF6F1;
+    --color-text: #2D2420;
+  }
+
+  body {
+    margin: 0;
+    background-color: #FAF6F1;
+    color: #2D2420;
+    font-family: 'Plus Jakarta Sans', 'Nunito', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+}
