@@ -26,9 +26,17 @@ export default function Combobox({ options, value, onChange, placeholder, classN
     if (!isFocused) setInputText(labelForValue(value))
   }, [value, options])
 
-  // While focused and typing, filter — otherwise show all
-  const filtered = inputText && isFocused
-    ? options.filter(o => o.label.toLowerCase().includes(inputText.toLowerCase()))
+  // While focused and typing, filter by label (contains) or value — otherwise show all
+  // Trailing space = exact value match ("1 " → only January); no space = prefix match ("1" → Jan/Oct/Nov/Dec)
+  const query = inputText.trim().toLowerCase()
+  const hasTrailingSpace = inputText !== inputText.trimEnd()
+  const filtered = query && isFocused
+    ? options.filter(o =>
+        o.label.toLowerCase().includes(query) ||
+        (hasTrailingSpace
+          ? o.value.toLowerCase() === query
+          : o.value.toLowerCase().startsWith(query))
+      )
     : options
 
   const handleFocus = () => {
