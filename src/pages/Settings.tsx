@@ -185,15 +185,15 @@ export default function Settings() {
       {/* Tabs */}
       <div className="px-4 pb-4 flex gap-2">
         {tabs.map(tab => (
-          <a
+          <Link
             key={tab.id}
-            href={`?tab=${tab.id}`}
+            to={`?tab=${tab.id}`}
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
               activeTab === tab.id ? 'bg-[#C2714F] text-white' : 'bg-[#F0E8E0] text-[#8B7355]'
             }`}
           >
             {tab.label}
-          </a>
+          </Link>
         ))}
       </div>
 
