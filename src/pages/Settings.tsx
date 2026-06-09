@@ -3,6 +3,7 @@ import { useSearchParams, useLocation, Link } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X, ArrowLeft } from 'lucide-react'
 import type { Holiday } from '../types'
 import { fetchHolidays, createHoliday, updateHoliday, deleteHoliday } from '../lib/holidays'
+import { fetchNotificationSettings, saveNotificationSettings } from '../lib/notificationSettings'
 import { formatAnchorDate } from '../lib/utils'
 import { MONTHS } from '../lib/constants'
 import Combobox from '../components/ui/Combobox'
@@ -112,13 +113,31 @@ export default function Settings() {
   const [confirmDeleteHoliday, setConfirmDeleteHoliday] = useState<Holiday | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [savingAccount, setSavingAccount] = useState(false)
+  const [leadTimes, setLeadTimes] = useState<number[]>([7, 1])
+  const [savingNotifications, setSavingNotifications] = useState(false)
+  const [notificationsSaved, setNotificationsSaved] = useState(false)
 
   useEffect(() => {
     fetchHolidays().then(({ data }) => setHolidays(data ?? []))
     supabase.auth.getUser().then(({ data }) => {
       setDisplayName(data.user?.user_metadata?.display_name ?? '')
     })
+    fetchNotificationSettings().then(setLeadTimes)
   }, [])
+
+  const toggleLeadTime = (days: number) => {
+    setLeadTimes(prev =>
+      prev.includes(days) ? prev.filter(d => d !== days) : [...prev, days]
+    )
+    setNotificationsSaved(false)
+  }
+
+  const handleSaveNotifications = async () => {
+    setSavingNotifications(true)
+    await saveNotificationSettings(leadTimes)
+    setSavingNotifications(false)
+    setNotificationsSaved(true)
+  }
 
   const handleDeleteHoliday = async () => {
     if (!confirmDeleteHoliday) return
@@ -282,14 +301,30 @@ export default function Settings() {
         <div className="px-4 pb-8">
           <div className="bg-white rounded-2xl border border-[#E8E0D8] p-4">
             <h2 className="font-bold text-[#2D2420] mb-3">Reminder lead times</h2>
-            <p className="text-sm text-[#8B7355] mb-4">Get email reminders before upcoming occasions.</p>
+            <p className="text-sm text-[#8B7355] mb-4">Get email reminders before upcoming occasions. You can select multiple.</p>
             {[30, 14, 7, 3, 1].map(days => (
               <label key={days} className="flex items-center gap-3 py-2 cursor-pointer">
-                <input type="checkbox" className="accent-[#C2714F]" />
+                <input
+                  type="checkbox"
+                  className="accent-[#C2714F]"
+                  checked={leadTimes.includes(days)}
+                  onChange={() => toggleLeadTime(days)}
+                />
                 <span className="text-sm text-[#2D2420]">{days} {days === 1 ? 'day' : 'days'} before</span>
               </label>
             ))}
-            <p className="text-xs text-[#8B7355] mt-3">Email notifications coming soon.</p>
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={handleSaveNotifications}
+                disabled={savingNotifications}
+                className="px-4 py-2 bg-[#C2714F] text-white text-sm font-semibold rounded-xl hover:bg-[#A85E3E] transition-colors disabled:opacity-60"
+              >
+                {savingNotifications ? 'Saving…' : 'Save'}
+              </button>
+              {notificationsSaved && (
+                <span className="text-sm text-[#8B7355]">Saved!</span>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
 # Giftify — Product Requirements Document
 
-**Version:** 2.1 (MVP)
+**Version:** 2.2 (MVP — in progress)
 **Author:** Michelle Kurzynski
 **Date:** June 2026
-**Status:** Approved — pending development
+**Status:** 90% complete — email sending (send-reminders Edge Function) remaining
 
 ---
 
@@ -109,24 +109,26 @@ An item in the Giver's personal product library, appropriate for gift giving.
 
 ### 4.3 GIFT
 
-A single product (or a single free-text item) given to one or more people, typically for an occasion. Each gift contains exactly one product from the library or one free-text description — multiple gifts can be given to the same person for the same occasion, but each is recorded separately.
+A single product (or a single free-text item) intended for or given to one or more people, typically for an occasion. Gifts have two states: **planned** (intended for a future occasion) and **given** (already recorded as given). Each gift contains exactly one product from the library or one free-text description — multiple gifts can be given to the same person for the same occasion, but each is recorded separately.
 
 | Attribute | Type | Notes |
 |---|---|---|
-| Gift Name | String | e.g., "4,000 Weeks for Ashley" |
-| Product | Link to Product | Optional; exactly 1 product from the library, OR 1 free-text description (e.g., "$50 cash", "Amazon gift card") |
-| Date Given | Date | Required; defaults to today; editable to support retroactive logging |
+| Gift Name | String | e.g., "4,000 Weeks for Ashley"; auto-suggested from product + recipient name |
+| Status | Enum | `planned` or `given`; defaults to `given` |
+| Product | Link to Product | Optional; exactly 1 product from the library, OR 1 free-text description (e.g., "$50 cash", "Amazon gift card") — can be left as "To be decided" for planned gifts |
+| Occasion | Link to Occasion | Required |
+| Date Given | Date | Set when status is `given`; defaults to today; editable for retroactive logging |
+| Planned Date | Date | Set when status is `planned`; the intended give date; auto-fills from occasion date |
 | Message / Note | Text | Personal note attached to this gift |
 | Custom Image | Image | Optional override photo |
 
 **Relationships:**
 - A Gift goes to 1–many Persons (recipients)
-- A Gift is associated with 0–1 Holiday
 - A Gift is associated with exactly 1 Occasion
-- A Gift may have 0–many related Gifts (by shared person/holiday/occasion)
+- A Gift may have 0–many related Gifts (by shared person/occasion)
 
 **AI actions:** Suggest a gift for a person for an occasion.
-**Giver actions:** Give a gift (record a completed gift); edit a gift; delete a gift (with confirmation prompt).
+**Giver actions:** Log a past gift; plan a future gift; mark a planned gift as given (confirms date); edit a gift; delete a gift (with confirmation prompt).
 
 ---
 
@@ -199,66 +201,81 @@ A specific instance of a holiday on a specific date, or a one-off reason for giv
 - List and card views switchable via toggle (same pattern as People); preference saved per tab
 - Paginated: 20 products per page with classic numbered pagination
 
-### F3 — Gift Recording
-- Launched from: a product detail page, an occasion detail page, the Gifts tab, or a general "Record a gift" button
-- Each gift contains exactly one product from the library or one free-text item; multiple gifts can be recorded for the same person and occasion separately
-- Recorded via a multi-step modal:
-  1. **Choose recipient(s)** — select one or more people from your People list
-  2. **Choose product** — select one product from your library (with a "Not yet given to [recipient]" filter toggle for convenience), or enter a single free-text description (e.g., "$50 cash", "Amazon gift card")
-  3. **Link occasion** — select an existing occasion or create a new one
-  4. **Date given** — defaults to today; editable for retroactive logging
-  5. **Add note** — optional personal message or note
-- Gifts can be edited or deleted after recording; deletion requires a confirmation prompt ("Delete this gift? This can't be undone.")
-- Gift history displayed on both Person and Occasion detail views
+### F3 — Gift Recording & Planning
+- Two entry points on the Gifts tab: **"Log past gift"** (terracotta) and **"Plan future gift"** (sage green); also accessible via "Record gift" shortcuts on Person and Occasion detail views
+- Each gift contains exactly one product from the library, one free-text description, or "To be decided" (planned gifts only); multiple gifts can be recorded for the same person and occasion separately
+- Both flows use a 5-step modal with a progress bar and back navigation:
+  1. **Recipients** — select one or more people (searchable)
+  2. **Gift** — "From library" (default), "Free text", or "Decide later" (plan flow only)
+  3. **Occasion** — required; select from existing occasions (past for log flow, upcoming for plan flow); inline "Add occasion" creates a new one on the spot with date validation (past dates only in log flow; today or future only in plan flow)
+  4. **Details** — gift name (auto-suggested as "{Product} for {Recipient}", always editable) + date field ("Date given" for log flow defaulting to today; "Planned date" for plan flow auto-filling from occasion date)
+  5. **Note** — optional personal message
+- **Planned gifts** show a prominent "Mark as given ✓" button on their detail page; tapping it confirms the actual give date and converts the gift to `given` status
+- Notifications (future): planned gifts trigger reminders before their planned date
+- Gifts can be edited or deleted after recording; deletion requires a confirmation prompt
+- Gift history displayed on both Person and Occasion detail views with a "Record gift" shortcut on each
 
 ### F4 — Holidays & Occasions
 - System pre-loads the following 15 holidays. System holidays cannot be edited or deleted; they are visually distinguished from user-created holidays in Settings.
 
-| Holiday | Anchor Date |
-|---|---|
-| Birthday | Per-person (auto-created when a Person's birthday field is saved) |
-| Christmas | December 25 |
-| Valentine's Day | February 14 |
-| Mother's Day | May 11 (2nd Sunday placeholder) |
-| Father's Day | June 15 (3rd Sunday placeholder) |
-| Hanukkah | December 25 (placeholder — shifts yearly; user adjusts the occasion date per year) |
-| Diwali | October 20 (placeholder — shifts yearly; user adjusts the occasion date per year) |
-| Thanksgiving | November 27 (4th Thursday placeholder) |
-| Easter | April 1 (placeholder — shifts yearly; user adjusts the occasion date per year) |
-| Passover | April 1 (placeholder — shifts yearly; user adjusts the occasion date per year) |
-| Eid al-Fitr | No fixed date — user sets date per year |
-| New Year's | January 1 |
-| Wedding / Anniversary | No fixed date — user sets date |
-| Baby Shower / New Baby | No fixed date — user sets date |
-| Graduation | No fixed date — user sets date |
+| Holiday | Anchor Date | Date Calculation |
+|---|---|---|
+| Birthday | Per-person | Auto-created when a Person's birthday field is saved |
+| Christmas | December 25 | Fixed |
+| Valentine's Day | February 14 | Fixed |
+| Mother's Day | May (2nd Sunday) | Calculated algorithmically each year |
+| Father's Day | June (3rd Sunday) | Calculated algorithmically each year |
+| Hanukkah | Varies | Hard-coded verified dates through 2035 (Hebrew calendar) |
+| Diwali | Varies | Hard-coded verified dates through 2035 (Hindu calendar) |
+| Thanksgiving | November (4th Thursday) | Calculated algorithmically each year |
+| Easter | Varies | Calculated algorithmically each year (Meeus algorithm) |
+| Passover | Varies | Hard-coded verified dates through 2035 (Hebrew calendar) |
+| Eid al-Fitr | No fixed date | User sets date per year (quick-start chip in Add occasion) |
+| New Year's | January 1 | Fixed |
+| Wedding / Anniversary | No fixed date | User sets date (quick-start chip in Add occasion) |
+| Baby Shower | No fixed date | User sets date (quick-start chip in Add occasion) |
+| Graduation | No fixed date | User sets date (quick-start chip in Add occasion) |
 
-- Birthday occasions auto-generate for the next upcoming birthday only; when a birthday occasion passes, the following year's is automatically created (rolling)
-- User can add custom holidays or one-off occasions
-- Dashboard shows upcoming occasions in the next 90 days with a days-until indicator
-- Occasion detail: list of recipients, planned/given gifts, AI suggestions
-- Occasions list page includes a "Manage Holidays" shortcut link to Settings → Holiday Management
-- Occasion detail page shows the parent holiday as a tappable link navigating to Settings → Holiday Management
+- **Auto-generation:** When the user visits the Occasions tab, the system lazily ensures one upcoming occasion exists per fixed-date/anchor-date system holiday (rolling: once a holiday passes, next year's is automatically created on the next page load). Mother's Day, Father's Day, Thanksgiving, and Easter are calculated algorithmically. Hanukkah, Passover, and Diwali use verified hard-coded dates through 2035 (sourced from Chabad.org and authoritative Hindu calendar references).
+- Birthday occasions auto-generate for the next upcoming birthday only; rolling forward year to year.
+- **Occasions tab views:** List view with **Upcoming** tab (all future occasions, soonest first) and **Past** tab (all past occasions, most recently passed first). Calendar view (monthly, with dots on mobile and occasion name chips on desktop). A list/calendar toggle switches between views.
+- **Add occasion:** The modal is for **one-off occasions only**. Includes Quick Start chips that pre-fill the occasion name, in order: Birthday 🎂, Wedding/Anniversary 💍, Baby Shower 👶, Graduation 🎓, Eid al-Fitr 🌙. Eid al-Fitr also shows a "find [year] date →" link since its date varies by moon sighting.
+- Recipients are **not** set on occasions — they are tracked via gifts recorded for that occasion.
+- Dashboard shows upcoming occasions in the next 90 days with a days-until indicator.
+- Occasion detail: planned/given gifts, AI suggestions; parent holiday shown as tappable link to Settings → Holiday Management.
+- "Manage Holidays" button on Occasions page → Settings → Holiday Management; Settings shows "← Back to Occasions" when navigated from there.
+- User can add fully custom holidays in Settings → Holiday Management.
 
-### F5 — AI Gift Suggestions
-- Surfaced as an always-visible suggestions strip embedded in Person and Occasion detail views:
-  - **Mobile:** A persistent horizontal scrollable strip of gift idea cards pinned just above the bottom tab bar; always visible as the page content scrolls above it
-  - **Desktop:** A collapsible right sidebar panel (expanded by default); toggled with a chevron button on the sidebar edge; state saved per session
-- Each suggestion card shows: photo, name, price, and a brief AI-generated note (e.g., "You haven't given Ashley this yet")
-- Tapping "Record as gift" on a suggestion card launches the gift recording modal pre-filled with that product and person/occasion
-- AI considers: person's profile (gender, pronouns, religion as optional context), occasion type, and gift history
-- Religion filter: available as an optional toggle, not applied automatically
+### F5 — AI Features (Gemini 2.0 Flash)
+All AI features run via Supabase Edge Functions so the Gemini API key is never exposed client-side.
+
+**URL auto-fill (Product Library):**
+- When adding a product, paste a URL and click "Auto-fill ✨" — the `parse-product-url` Edge Function fetches the page and calls Gemini to extract product name, price, and photo URL
+- If the page cannot be fetched or parsed, an inline error is shown and the user fills in details manually
+
+**Gift suggestions (Person & Occasion detail):**
+- Surfaced via a "Gift ideas" panel on Person and Occasion detail views:
+  - **Mobile:** Horizontal scrollable strip pinned above the bottom tab bar; user taps "Get ideas" to load
+  - **Desktop:** Collapsible right sidebar (toggled with chevron); user clicks "Get ideas" to load
+- The `suggest-gifts` Edge Function receives: person profile (gender, pronouns, religion), occasion context, full gift history for that person, and the user's product library
+- Returns up to 5 ranked product suggestions with a one-sentence reason each
+- Suggestions prioritise products not yet given to that person
+- User can refresh suggestions at any time
+- Religion is passed as optional context, not as a hard filter
 
 ### F6 — Dashboard / Home
-- Upcoming occasions (next 90 days) sorted by date ascending (soonest first), with days-until indicator; "View all occasions" link opens the full Occasions tab
-- Recent gift activity feed
-- Quick-access to People and Products
-- First-time users see a friendly empty state with CTAs ("Add the people you love to give to", "Add a product to your library") — no wizard, no sample data
+- **Quick stats row:** People count and Products count as tappable cards linking to their respective tabs
+- **Gifts to give:** Planned gifts section (only shown when planned gifts exist); shows up to 3 with days-until chips; links to Gifts tab
+- **Upcoming occasions:** Next 5 occasions in the next 90 days, soonest first, with days-until chips; "View all" link to Occasions tab; empty state if none in window
+- **Recent gifts given:** Last 5 given gifts with recipient avatars, occasion, and date; "View all" link to Gifts tab; empty state with "Log your first gift →" link
+- **Quick actions:** Four buttons — Log a gift (terracotta), Plan a gift (sage), Add a person, Add a product
+- **First-time empty state:** Shown when no people AND no products exist; friendly welcome with two CTAs ("Add the people you love" → People tab, "Add a product to your library" → Products tab); no wizard, no sample data
 
 ### F7 — Gifts List
 - Accessible via the Gifts tab in the bottom nav
-- Chronological list of all recorded gifts, sorted by date descending (most recent first)
-- Filterable by: recipient, product, occasion, and date range
-- Each row shows: gift name, recipient(s), product or free-text description, occasion, and date given
+- Two tabs: **Upcoming** (planned gifts, soonest first, sage green accent) and **Given** (logged gifts, most recent first, terracotta accent)
+- Calendar view (monthly) shows planned gifts on their intended dates; dots on mobile, name chips on desktop — toggled via list/calendar icon
+- Each row shows: recipient avatar(s), gift name, "Planned" badge (for planned gifts), recipients, occasion, and date
 - Tapping a gift opens its detail/edit view
 
 ### F8 — Notifications & Reminders
@@ -406,3 +423,106 @@ A specific instance of a holiday on a specific date, or a one-off reason for giv
 | Push notifications | Browser push or native push |
 | Multi-user sharing | Share a gift list with a spouse or partner |
 | Wishlist management | Track what others want to give you |
+
+---
+
+## 13. Build State & Implementation Notes
+
+> This section documents what has been built, the exact database migrations, Supabase configuration, and what remains. It exists so the app can be fully reconstructed from the PRD alone.
+
+### 13.1 What Is Built (as of June 2026)
+
+| Feature | Status |
+|---|---|
+| Project scaffold (React + Vite + TypeScript + Tailwind CSS v4 + Supabase client) | ✅ Done |
+| Plus Jakarta Sans font + brand colors in src/index.css | ✅ Done |
+| App shell: Header, BottomNav (mobile), Sidebar (desktop 768px+), AppShell layout | ✅ Done |
+| Auth: magic link, password sign-in, create account, forgot password, confirmation screens | ✅ Done |
+| People: list (card + table views), detail, add/edit modal, archive/unarchive, delete, search, pagination | ✅ Done |
+| Combobox component: searchable select, shows all options on focus, must select from predefined list | ✅ Done |
+| Products: list (card + table views), detail, add/edit modal, photo upload (Supabase Storage), archive/unarchive, delete, favorites, search, category filter, pagination | ✅ Done |
+| Product image display: square area, object-contain, white background with padding — never cropped | ✅ Done |
+| Holidays + Occasions: 15 system holidays, ensureSystemOccasions (rolling lazy creation), Upcoming/Past tabs, calendar view, Add occasion modal with Quick Start chips, Settings holiday management | ✅ Done |
+| Gifts: two entry points (Log past / Plan future), 5-step modal with mode-aware flows, auto-suggested gift name, Upcoming/Given tabs, calendar view, Gift detail with "Mark as given ✓", gift history on Person + Occasion detail | ✅ Done |
+| Dashboard (Home tab): quick stats, gifts to give, upcoming occasions (90 days), recent gifts given, quick actions, first-time empty state | ✅ Done |
+| AI — parse-product-url Edge Function: URL → Gemini 2.0 Flash → auto-fills product name, price, photo | ✅ Done |
+| AI — suggest-gifts Edge Function: person profile + gift history + products → ranked suggestions | ✅ Done |
+| Notifications — notification_settings table: one row per user, lead_times integer[] | ✅ Done |
+| Notifications — Settings → Notifications tab: checkboxes wired to DB, Save button persists preferences | ✅ Done |
+| Notifications — send-reminders Edge Function (daily cron, Resend email) | ❌ Not yet built |
+| Developer setup guide | ❌ Not yet built |
+
+### 13.2 Database Migrations (run in this order)
+
+| File | Description | Notes |
+|---|---|---|
+| 001_create_people.sql | people table | |
+| 002_flexible_people_fields.sql | NOT run — constraints kept | Skip this one |
+| 003_create_products.sql | products table | |
+| 004_storage_product_images.sql | Supabase Storage bucket for product images | |
+| 005_create_holidays_occasions.sql | holidays, occasions, occasion_people tables; 15 system holidays seeded | |
+| 006_cleanup_duplicate_occasions.sql | removes duplicate occasions | |
+| 007_occasions_unique_constraint.sql | unique constraint on occasions | |
+| 008_cleanup_2027_occasions.sql | removes incorrect 2027 occasions | |
+| 009_fix_diwali_hanukkah_2026.sql | corrects Diwali and Hanukkah 2026 dates | |
+| 010_create_gifts.sql | gifts and gift_recipients tables | |
+| 011_gifts_planned_status.sql | adds planned status + planned_date column | |
+| 012_gifts_date_given_nullable.sql | makes date_given nullable for planned gifts | |
+| 013_create_notification_settings.sql | notification_settings table with RLS policies | |
+
+**Important:** After running migration 013, also run this manually in the SQL Editor — tables created via raw SQL do not automatically get API access:
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON notification_settings TO authenticated;
+```
+
+Also run this policy for full upsert support:
+```sql
+CREATE POLICY "Users can upsert their own notification settings"
+  ON notification_settings FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+```
+
+### 13.3 Supabase Configuration
+
+**Secrets (set via `supabase secrets set`):**
+- `GEMINI_API_KEY` — Google AI Studio key for Gemini 2.0 Flash
+- `RESEND_API_KEY` — Resend API key for email notifications
+
+**Storage bucket:** `product-images` (public bucket for product photos)
+
+**Edge Functions deployed:**
+- `parse-product-url` — called by "Auto-fill ✨" button in ProductForm
+- `suggest-gifts` — called by GiftSuggestions component on Person and Occasion detail
+
+**Edge Functions to deploy:**
+- `send-reminders` — daily cron; not yet built
+
+### 13.4 Project File Structure (key files)
+
+```
+src/
+  pages/         — Home, People, PersonDetail, Products, ProductDetail,
+                   Occasions, OccasionDetail, Gifts, GiftDetail, Settings
+  components/
+    ui/           — Combobox, shared UI components
+    gifts/        — GiftModal, GiftSuggestions
+    occasions/    — OccasionForm
+    products/     — ProductForm
+  lib/
+    supabase.ts   — Supabase client
+    people.ts     — people DB helpers
+    products.ts   — products DB helpers
+    gifts.ts      — gifts DB helpers
+    occasions.ts  — occasions DB helpers
+    holidays.ts   — holidays DB helpers
+    ensureOccasions.ts — rolling system occasion creation
+    notificationSettings.ts — notification settings DB helpers
+    utils.ts      — shared utilities
+  types/index.ts  — all TypeScript types
+supabase/
+  functions/
+    parse-product-url/index.ts
+    suggest-gifts/index.ts
+  migrations/     — 001–013 (see 13.2)
+```

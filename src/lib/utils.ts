@@ -1,6 +1,7 @@
 import { MONTH_SHORT } from './constants'
 
-export function formatDate(dateStr: string): string {
+export function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
   const [year, month, day] = dateStr.split('-').map(Number)
   return `${MONTH_SHORT[month - 1]} ${day}, ${year}`
 }

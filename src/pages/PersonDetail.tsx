@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
-import type { Person } from '../types'
+import { ArrowLeft, Pencil, Archive, ArchiveRestore, Trash2, Plus } from 'lucide-react'
+import type { Person, GiftWithDetails } from '../types'
 import { fetchPerson, archivePerson, deletePerson } from '../lib/people'
+import { fetchGiftsByPerson } from '../lib/gifts'
 import { MONTH_SHORT, GENDER_OPTIONS, PRONOUN_OPTIONS, RELIGION_OPTIONS } from '../lib/constants'
+import { formatDate } from '../lib/utils'
 import PersonAvatar from '../components/people/PersonAvatar'
 import PersonForm from '../components/people/PersonForm'
+import GiftForm from '../components/gifts/GiftForm'
+import GiftSuggestions from '../components/gifts/GiftSuggestions'
 
 function labelFor(options: { value: string; label: string }[], value: string | null) {
   if (!value) return null
@@ -16,16 +20,24 @@ export default function PersonDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [person, setPerson] = useState<Person | null>(null)
+  const [gifts, setGifts] = useState<GiftWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
+  const [showGiftForm, setShowGiftForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = async () => {
     if (!id) return
     setLoading(true)
-    const { data, error } = await fetchPerson(id)
-    if (error || !data) navigate('/people')
-    else setPerson(data)
+    const [personRes, giftsRes] = await Promise.all([
+      fetchPerson(id),
+      fetchGiftsByPerson(id),
+    ])
+    if (personRes.error || !personRes.data) navigate('/people')
+    else {
+      setPerson(personRes.data)
+      setGifts((giftsRes.data as unknown as GiftWithDetails[]) ?? [])
+    }
     setLoading(false)
   }
 
@@ -56,7 +68,8 @@ export default function PersonDetail() {
   if (!person) return null
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="flex min-h-full">
+      <div className="flex-1 max-w-2xl mx-auto min-w-0">
 
       {/* Back nav */}
       <div className="px-4 pt-4 pb-2">
@@ -120,13 +133,46 @@ export default function PersonDetail() {
         ))}
       </div>
 
-      {/* Gift history placeholder */}
+      {/* Gift history */}
       <div className="mx-4 mt-4 mb-8">
-        <h2 className="text-base font-bold text-[#2D2420] mb-3">Gift history</h2>
-        <div className="bg-white rounded-2xl border border-[#E8E0D8] px-4 py-8 text-center">
-          <p className="text-sm text-[#8B7355]">No gifts recorded yet.</p>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-bold text-[#2D2420]">
+            Gift history {gifts.length > 0 && `(${gifts.length})`}
+          </h2>
+          <button onClick={() => setShowGiftForm(true)}
+            className="flex items-center gap-1 text-xs font-semibold text-[#C2714F] hover:underline">
+            <Plus size={13} /> Record gift
+          </button>
         </div>
+        {gifts.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E8E0D8] px-4 py-8 text-center">
+            <p className="text-sm text-[#8B7355]">No gifts recorded yet.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-[#E8E0D8] divide-y divide-[#E8E0D8]">
+            {gifts.map(gift => (
+              <Link key={gift.id} to={`/gifts/${gift.id}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[#F8F3EE] transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#2D2420] text-sm truncate">{gift.name}</p>
+                  <p className="text-xs text-[#8B7355] truncate">
+                    {gift.occasion?.name ?? 'No occasion'}
+                  </p>
+                </div>
+                <span className="text-xs text-[#8B7355] shrink-0">{formatDate(gift.date_given)}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
+
+      {showGiftForm && person && (
+        <GiftForm
+          prefillPersonId={person.id}
+          onSave={() => { setShowGiftForm(false); load() }}
+          onClose={() => setShowGiftForm(false)}
+        />
+      )}
 
       {/* Edit modal */}
       {showEdit && (
@@ -162,6 +208,8 @@ export default function PersonDetail() {
         </div>
       )}
 
+      </div>
+      {person && <GiftSuggestions person={person} />}
     </div>
   )
 }

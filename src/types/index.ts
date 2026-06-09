@@ -72,3 +72,29 @@ export interface OccasionWithDetails extends Occasion {
 
 export type OccasionInsert = Omit<Occasion, 'id' | 'user_id' | 'created_at' | 'updated_at'>
 export type OccasionUpdate = Partial<OccasionInsert>
+
+export interface Gift {
+  id: string
+  user_id: string
+  name: string
+  product_id: string | null
+  free_text: string | null
+  occasion_id: string | null
+  status: 'planned' | 'given'
+  date_given: string | null
+  planned_date: string | null
+  message: string | null
+  custom_photo_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GiftWithDetails extends Gift {
+  product: Product | null
+  occasion: Occasion | null
+  recipients: Person[]
+  gift_recipients?: { person_id: string; person: Person }[]
+}
+
+export type GiftInsert = Omit<Gift, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+export type GiftUpdate = Partial<GiftInsert>

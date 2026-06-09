@@ -8,6 +8,7 @@ import PersonDetail from './pages/PersonDetail'
 import Occasions from './pages/Occasions'
 import OccasionDetail from './pages/OccasionDetail'
 import Gifts from './pages/Gifts'
+import GiftDetail from './pages/GiftDetail'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
 import Settings from './pages/Settings'
@@ -40,6 +41,7 @@ function AppRoutes() {
         <Route path="occasions" element={<Occasions />} />
         <Route path="occasions/:id" element={<OccasionDetail />} />
         <Route path="gifts" element={<Gifts />} />
+        <Route path="gifts/:id" element={<GiftDetail />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:id" element={<ProductDetail />} />
         <Route path="settings" element={<Settings />} />

@@ -2,13 +2,13 @@ import { supabase } from './supabase'
 import type { OccasionInsert, OccasionUpdate } from '../types'
 
 export async function fetchOccasions(options: {
-  upcomingOnly?: boolean
+  tab?: 'upcoming' | 'past'
   startDate?: string
   endDate?: string
   page?: number
   perPage?: number
 } = {}) {
-  const { upcomingOnly = false, startDate, endDate, page = 1, perPage = 20 } = options
+  const { tab = 'upcoming', startDate, endDate, page = 1, perPage = 20 } = options
 
   const selectQuery = `
     *,
@@ -26,19 +26,19 @@ export async function fetchOccasions(options: {
       .order('date', { ascending: true })
   }
 
+  const today = new Date().toISOString().split('T')[0]
   const start = (page - 1) * perPage
   const end = start + perPage - 1
 
   let query = supabase
     .from('occasions')
     .select(selectQuery, { count: 'exact' })
-    .order('date', { ascending: upcomingOnly })
     .range(start, end)
 
-  if (upcomingOnly) {
-    const today = new Date().toISOString().split('T')[0]
-    const ninetyDays = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    query = query.gte('date', today).lte('date', ninetyDays)
+  if (tab === 'upcoming') {
+    query = query.gte('date', today).order('date', { ascending: true })
+  } else {
+    query = query.lt('date', today).order('date', { ascending: false })
   }
 
   return query

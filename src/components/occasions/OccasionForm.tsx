@@ -10,10 +10,11 @@ interface Props {
 }
 
 const QUICK_START = [
-  { name: 'Eid al-Fitr',          emoji: '🌙' },
+  { name: 'Birthday',              emoji: '🎂' },
   { name: 'Wedding / Anniversary', emoji: '💍' },
-  { name: 'Baby Shower / New Baby',emoji: '👶' },
+  { name: 'Baby Shower',           emoji: '👶' },
   { name: 'Graduation',            emoji: '🎓' },
+  { name: 'Eid al-Fitr',          emoji: '🌙' },
 ]
 
 const inputClass = 'w-full px-3 py-2.5 rounded-xl border border-[#E8E0D8] bg-white text-[#2D2420] text-sm focus:outline-none focus:border-[#C2714F] transition-colors'

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Calendar, Settings, List } from 'lucide-react'
+import { Plus, Calendar, Settings, List, Info } from 'lucide-react'
 import type { OccasionWithDetails } from '../types'
 import { fetchOccasions } from '../lib/occasions'
 import { ensureSystemOccasions } from '../lib/ensureOccasions'
@@ -14,22 +14,21 @@ export default function Occasions() {
   const [occasions, setOccasions] = useState<OccasionWithDetails[]>([])
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [upcomingOnly, setUpcomingOnly] = useState(false)
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
   const [view, setView] = useState<'list' | 'calendar'>('list')
   const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(() => new Date())
 
   const getCalendarRange = (month: Date) => {
     const year = month.getFullYear()
     const m = month.getMonth()
-    // Include a buffer for days shown from adjacent months
     const start = new Date(year, m, 1)
     start.setDate(1 - start.getDay())
     const end = new Date(year, m + 1, 0)
     const endCopy = new Date(end)
-    const remaining = 6 - endCopy.getDay()
-    endCopy.setDate(endCopy.getDate() + remaining)
+    endCopy.setDate(endCopy.getDate() + (6 - endCopy.getDay()))
     return {
       startDate: start.toISOString().split('T')[0],
       endDate: endCopy.toISOString().split('T')[0],
@@ -45,41 +44,55 @@ export default function Occasions() {
       const { data, error } = await fetchOccasions({ startDate, endDate })
       if (!error) setOccasions((data as unknown as OccasionWithDetails[]) ?? [])
     } else {
-      const { data, count, error } = await fetchOccasions({ upcomingOnly, page, perPage: PER_PAGE })
+      const { data, count, error } = await fetchOccasions({ tab, page, perPage: PER_PAGE })
       if (!error) {
         setOccasions((data as unknown as OccasionWithDetails[]) ?? [])
         setCount(count ?? 0)
       }
     }
     setLoading(false)
-  }, [upcomingOnly, page, view, currentMonth])
+  }, [tab, page, view, currentMonth])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setPage(1) }, [upcomingOnly, view])
+  useEffect(() => { setPage(1) }, [tab, view])
 
   const totalPages = Math.ceil(count / PER_PAGE)
 
-  const handlePrevMonth = () => {
-    setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))
-  }
-
-  const handleNextMonth = () => {
-    setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))
-  }
+  const handlePrevMonth = () => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+  const handleNextMonth = () => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))
 
   return (
     <div className="flex flex-col min-h-full">
 
       {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold text-[#2D2420]">Occasions</h1>
+        <div className="relative flex items-center gap-2">
+          <h1 className="text-2xl font-extrabold text-[#2D2420]">Occasions</h1>
+          <button
+            onClick={() => setShowInfo(v => !v)}
+            className="text-[#8B7355] hover:text-[#C2714F] transition-colors mt-0.5"
+            aria-label="About holiday occasions"
+          >
+            <Info size={16} />
+          </button>
+          {showInfo && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowInfo(false)} />
+              <div className="absolute top-8 left-0 z-20 w-72 bg-white border border-[#E8E0D8] rounded-xl shadow-lg p-3">
+                <p className="text-xs text-[#2D2420] leading-relaxed">
+                  Recurring holiday occasions are added automatically. Once a holiday passes, next year's is added for you.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Link
             to="/settings?tab=holidays"
             state={{ from: '/occasions' }}
             className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-xl border border-[#E8E0D8] text-[#2D2420] hover:bg-[#F0E8E0] transition-colors"
           >
-            <Settings size={15} /> Manage Holidays
+            <Settings size={15} /> Manage holidays
           </Link>
           <button
             onClick={() => setShowForm(true)}
@@ -90,33 +103,33 @@ export default function Occasions() {
         </div>
       </div>
 
-      {/* Controls row */}
+      {/* Tabs + view toggle row */}
       <div className="px-4 pb-3 flex items-center justify-between gap-3">
-        {/* Upcoming toggle — only shown in list view */}
+        {/* Upcoming / Past tabs — only in list view */}
         {view === 'list' ? (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setUpcomingOnly(false)}
+              onClick={() => setTab('upcoming')}
               className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                !upcomingOnly ? 'bg-[#C2714F] text-white' : 'bg-[#F0E8E0] text-[#8B7355]'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setUpcomingOnly(true)}
-              className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                upcomingOnly ? 'bg-[#C2714F] text-white' : 'bg-[#F0E8E0] text-[#8B7355]'
+                tab === 'upcoming' ? 'bg-[#C2714F] text-white' : 'bg-[#F0E8E0] text-[#8B7355]'
               }`}
             >
               Upcoming
             </button>
+            <button
+              onClick={() => setTab('past')}
+              className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                tab === 'past' ? 'bg-[#C2714F] text-white' : 'bg-[#F0E8E0] text-[#8B7355]'
+              }`}
+            >
+              Past
+            </button>
           </div>
         ) : (
-          <div /> /* spacer */
+          <div />
         )}
 
-        {/* View toggle */}
+        {/* List / Calendar view toggle */}
         <div className="flex items-center gap-1 bg-[#F0E8E0] rounded-lg p-1">
           <button
             onClick={() => setView('list')}
@@ -152,17 +165,19 @@ export default function Occasions() {
               <Calendar size={28} className="text-[#C2714F]" />
             </div>
             <p className="font-bold text-[#2D2420]">
-              {upcomingOnly ? 'No upcoming occasions' : 'No occasions yet'}
+              {tab === 'upcoming' ? 'No upcoming occasions' : 'No past occasions yet'}
             </p>
             <p className="text-sm text-[#8B7355] mt-1">
-              {upcomingOnly ? 'Nothing in the next 90 days.' : 'Add occasions to track gift-giving events.'}
+              {tab === 'upcoming'
+                ? 'Add an occasion or check back after holidays are generated.'
+                : 'Past occasions will appear here once they pass.'}
             </p>
-            {!upcomingOnly && (
+            {tab === 'upcoming' && (
               <button
                 onClick={() => setShowForm(true)}
                 className="mt-4 px-4 py-2 bg-[#C2714F] text-white text-sm font-semibold rounded-xl hover:bg-[#A85E3E] transition-colors"
               >
-                Add your first occasion
+                Add an occasion
               </button>
             )}
           </div>
@@ -170,7 +185,7 @@ export default function Occasions() {
           <div className="bg-white rounded-2xl border border-[#E8E0D8] overflow-hidden">
             {occasions.map(occasion => {
               const days = daysUntil(occasion.date)
-              const isUpcoming = days >= 0 && days <= 90
+              const isUpcoming = days >= 0
 
               return (
                 <Link
@@ -185,6 +200,9 @@ export default function Occasions() {
                     <p className="text-xl font-extrabold text-[#2D2420] leading-none">
                       {new Date(occasion.date + 'T00:00:00').getDate()}
                     </p>
+                    <p className="text-xs text-[#8B7355]">
+                      {new Date(occasion.date + 'T00:00:00').getFullYear()}
+                    </p>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-[#2D2420] text-sm truncate">{occasion.name}</p>
@@ -195,7 +213,7 @@ export default function Occasions() {
                       {occasion.holiday && ` · ${occasion.holiday.name}`}
                     </p>
                   </div>
-                  {isUpcoming && (
+                  {isUpcoming && days <= 90 && (
                     <span className={`shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
                       days <= 7 ? 'bg-[#FDF0EB] text-[#C2714F]' : 'bg-[#F0E8E0] text-[#8B7355]'
                     }`}>
@@ -209,7 +227,7 @@ export default function Occasions() {
         )}
       </div>
 
-      {/* Pagination — list view only */}
+      {/* Pagination */}
       {view === 'list' && totalPages > 1 && (
         <div className="px-4 py-4 flex items-center justify-center gap-1">
           <button

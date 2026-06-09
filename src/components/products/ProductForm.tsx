@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
-import { X, Upload, Package } from 'lucide-react'
+import { X, Upload, Package, Sparkles } from 'lucide-react'
 import type { Product } from '../../types'
 import { createProduct, updateProduct } from '../../lib/products'
 import { uploadProductImage } from '../../lib/storage'
 import { CATEGORY_OPTIONS } from '../../lib/constants'
+import { supabase } from '../../lib/supabase'
 
 interface Props {
   product?: Product | null
@@ -25,9 +26,28 @@ export default function ProductForm({ product, onSave, onClose }: Props) {
   })
   const [photoUrl, setPhotoUrl] = useState<string | null>(product?.photo_url ?? null)
   const [photoUploading, setPhotoUploading] = useState(false)
+  const [autoFilling, setAutoFilling] = useState(false)
+  const [autoFillError, setAutoFillError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAutoFill = async () => {
+    if (!form.url.trim()) return
+    setAutoFilling(true)
+    setAutoFillError(null)
+    const { data, error } = await supabase.functions.invoke('parse-product-url', {
+      body: { url: form.url.trim() },
+    })
+    setAutoFilling(false)
+    if (error || data?.error) {
+      setAutoFillError(data?.error ?? 'Could not read that page. Please fill in details manually.')
+      return
+    }
+    if (data?.name) set('name', data.name)
+    if (data?.price) set('price', String(data.price))
+    if (data?.photo_url && !photoUrl) setPhotoUrl(data.photo_url)
+  }
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
 
@@ -137,17 +157,32 @@ export default function ProductForm({ product, onSave, onClose }: Props) {
             />
           </div>
 
-          {/* URL */}
+          {/* URL + auto-fill */}
           <div>
             <label className={labelClass}>Product URL</label>
-            <input
-              type="url"
-              value={form.url}
-              onChange={e => set('url', e.target.value)}
-              placeholder="https://..."
-              className={inputClass}
-            />
-            <p className="text-xs text-[#8B7355] mt-1">AI auto-fill coming soon</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={form.url}
+                onChange={e => { set('url', e.target.value); setAutoFillError(null) }}
+                placeholder="https://..."
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={handleAutoFill}
+                disabled={!form.url.trim() || autoFilling}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#C2714F] text-white text-xs font-semibold rounded-xl hover:bg-[#A85E3E] transition-colors disabled:opacity-40"
+              >
+                <Sparkles size={13} />
+                {autoFilling ? 'Filling…' : 'Auto-fill'}
+              </button>
+            </div>
+            {autoFillError ? (
+              <p className="text-xs text-red-500 mt-1">{autoFillError}</p>
+            ) : (
+              <p className="text-xs text-[#8B7355] mt-1">Paste a URL and click Auto-fill to import product details.</p>
+            )}
           </div>
 
           {/* Name */}

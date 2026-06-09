@@ -1,26 +1,36 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Trash2, Calendar } from 'lucide-react'
-import type { OccasionWithDetails } from '../types'
+import { ArrowLeft, Pencil, Trash2, Calendar, Plus } from 'lucide-react'
+import type { OccasionWithDetails, GiftWithDetails } from '../types'
 import { fetchOccasion, deleteOccasion } from '../lib/occasions'
+import { fetchGiftsByOccasion } from '../lib/gifts'
 import { formatDate, daysUntil, daysUntilLabel } from '../lib/utils'
 import PersonAvatar from '../components/people/PersonAvatar'
 import OccasionForm from '../components/occasions/OccasionForm'
+import GiftForm from '../components/gifts/GiftForm'
 
 export default function OccasionDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [occasion, setOccasion] = useState<OccasionWithDetails | null>(null)
+  const [gifts, setGifts] = useState<GiftWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
+  const [showGiftForm, setShowGiftForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = async () => {
     if (!id) return
     setLoading(true)
-    const { data, error } = await fetchOccasion(id)
-    if (error || !data) navigate('/occasions')
-    else setOccasion(data as unknown as OccasionWithDetails)
+    const [occasionRes, giftsRes] = await Promise.all([
+      fetchOccasion(id),
+      fetchGiftsByOccasion(id),
+    ])
+    if (occasionRes.error || !occasionRes.data) navigate('/occasions')
+    else {
+      setOccasion(occasionRes.data as unknown as OccasionWithDetails)
+      setGifts((giftsRes.data as unknown as GiftWithDetails[]) ?? [])
+    }
     setLoading(false)
   }
 
@@ -137,13 +147,48 @@ export default function OccasionDetail() {
         )}
       </div>
 
-      {/* Gift history placeholder */}
+      {/* Gifts */}
       <div className="mx-4 mt-4 mb-8">
-        <h2 className="text-base font-bold text-[#2D2420] mb-3">Gifts</h2>
-        <div className="bg-white rounded-2xl border border-[#E8E0D8] px-4 py-8 text-center">
-          <p className="text-sm text-[#8B7355]">No gifts recorded for this occasion yet.</p>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-bold text-[#2D2420]">
+            Gifts {gifts.length > 0 && `(${gifts.length})`}
+          </h2>
+          <button onClick={() => setShowGiftForm(true)}
+            className="flex items-center gap-1 text-xs font-semibold text-[#C2714F] hover:underline">
+            <Plus size={13} /> Record gift
+          </button>
         </div>
+        {gifts.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E8E0D8] px-4 py-8 text-center">
+            <p className="text-sm text-[#8B7355]">No gifts recorded for this occasion yet.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-[#E8E0D8] divide-y divide-[#E8E0D8]">
+            {gifts.map(gift => {
+              const recipients = (gift as any).gift_recipients?.map((r: any) => r.person).filter(Boolean) ?? []
+              return (
+                <Link key={gift.id} to={`/gifts/${gift.id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[#F8F3EE] transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#2D2420] text-sm truncate">{gift.name}</p>
+                    <p className="text-xs text-[#8B7355] truncate">
+                      {recipients.map((p: any) => p.first_name).join(', ') || 'No recipients'}
+                    </p>
+                  </div>
+                  <span className="text-xs text-[#8B7355] shrink-0">{formatDate(gift.date_given)}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
+
+      {showGiftForm && occasion && (
+        <GiftForm
+          onSave={() => { setShowGiftForm(false); load() }}
+          onClose={() => setShowGiftForm(false)}
+        />
+      )}
 
       {showEdit && (
         <OccasionForm
