@@ -1,9 +1,9 @@
 # Giftify — Product Requirements Document
 
-**Version:** 2.2 (MVP — in progress)
+**Version:** 3.0 (MVP — complete)
 **Author:** Michelle Kurzynski
 **Date:** June 2026
-**Status:** 90% complete — email sending (send-reminders Edge Function) remaining
+**Status:** Complete. All MVP features built and deployed.
 
 ---
 
@@ -449,8 +449,9 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 | AI — suggest-gifts Edge Function: person profile + gift history + products → ranked suggestions | ✅ Done |
 | Notifications — notification_settings table: one row per user, lead_times integer[] | ✅ Done |
 | Notifications — Settings → Notifications tab: checkboxes wired to DB, Save button persists preferences | ✅ Done |
-| Notifications — send-reminders Edge Function (daily cron, Resend email) | ❌ Not yet built |
-| Developer setup guide | ❌ Not yet built |
+| Notifications — send-reminders Edge Function (daily cron, Resend email) | ✅ Done |
+| App deployed to Vercel | ✅ Done |
+| Developer setup guide | ❌ Not yet written |
 
 ### 13.2 Database Migrations (run in this order)
 
@@ -468,7 +469,9 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 | 010_create_gifts.sql | gifts and gift_recipients tables | |
 | 011_gifts_planned_status.sql | adds planned status + planned_date column | |
 | 012_gifts_date_given_nullable.sql | makes date_given nullable for planned gifts | |
-| 013_create_notification_settings.sql | notification_settings table with RLS policies | |
+| 013_create_notification_settings.sql | notification_settings table with RLS policies | After running, also run the GRANT and policy manually — see note below |
+| 014_reminder_function.sql | `get_reminder_occasions()` SQL function — joins auth.users + notification_settings + occasions + occasion_people + people to return all (user, occasion, person) rows due for a reminder today | SECURITY DEFINER; called by send-reminders Edge Function |
+| 015_cron_send_reminders.sql | pg_cron job: calls send-reminders Edge Function daily at 9 AM UTC via net.http_post | Requires pg_cron and pg_net extensions — both enabled by default on Supabase managed instances |
 
 **Important:** After running migration 013, also run this manually in the SQL Editor — tables created via raw SQL do not automatically get API access:
 ```sql
@@ -483,22 +486,46 @@ CREATE POLICY "Users can upsert their own notification settings"
   WITH CHECK (auth.uid() = user_id);
 ```
 
+**Rule:** Every migration that creates a table via raw SQL must include a `GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO authenticated;` statement, or all Data API calls will return 403.
+
 ### 13.3 Supabase Configuration
 
-**Secrets (set via `supabase secrets set`):**
+**Project ref:** `mdygugjxdfdfhkkcrbfx`
+
+**Secrets (set via `supabase secrets set KEY=value`):**
 - `GEMINI_API_KEY` — Google AI Studio key for Gemini 2.0 Flash
 - `RESEND_API_KEY` — Resend API key for email notifications
+- (Supabase auto-injects `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` into every Edge Function — do not set these manually)
 
 **Storage bucket:** `product-images` (public bucket for product photos)
 
 **Edge Functions deployed:**
 - `parse-product-url` — called by "Auto-fill ✨" button in ProductForm
 - `suggest-gifts` — called by GiftSuggestions component on Person and Occasion detail
+- `send-reminders` — daily cron at 9 AM UTC; queries `get_reminder_occasions()` SQL function and sends HTML digest emails via Resend; uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS
 
-**Edge Functions to deploy:**
-- `send-reminders` — daily cron; not yet built
+**Auth redirect URLs** — must be added in Supabase Dashboard → Authentication → URL Configuration:
+- `http://localhost:5173/**` (local dev)
+- `https://giftify-lake.vercel.app/**` (production)
+- Site URL: `https://giftify-lake.vercel.app`
 
-### 13.4 Project File Structure (key files)
+**Cron schedule:** `send-reminders` runs daily at 9 AM UTC via pg_cron (configured in migration 015). The cron calls the function using the JWT-format anon key — not the `sb_publishable_*` format. The JWT anon key is found in Supabase Dashboard → Settings → API → "anon public".
+
+**Email sender:** Currently `onboarding@resend.dev` (Resend test sender). To send to external addresses in production, a verified sending domain must be configured in Resend and the `from` field in `send-reminders/index.ts` updated accordingly.
+
+### 13.4 Deployment
+
+**Live app:** https://giftify-lake.vercel.app
+**Platform:** Vercel (free tier; auto-deploys on push to `main` branch of GitHub repo)
+**GitHub repo:** Connected to Vercel; pushing to `main` triggers a new deployment automatically
+
+**Vercel environment variables** (set in Vercel Dashboard → Project → Settings → Environment Variables):
+- `VITE_SUPABASE_URL` = `https://mdygugjxdfdfhkkcrbfx.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` = *(the `sb_publishable_*` key from the `.env` file)*
+
+**SPA routing:** `vercel.json` at project root contains `{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }` — required for React Router to work on Vercel.
+
+### 13.5 Project File Structure (key files)
 
 ```
 src/
@@ -506,23 +533,25 @@ src/
                    Occasions, OccasionDetail, Gifts, GiftDetail, Settings
   components/
     ui/           — Combobox, shared UI components
-    gifts/        — GiftModal, GiftSuggestions
+    gifts/        — GiftModal, GiftCalendar, GiftSuggestions
     occasions/    — OccasionForm
     products/     — ProductForm
   lib/
-    supabase.ts   — Supabase client
-    people.ts     — people DB helpers
-    products.ts   — products DB helpers
-    gifts.ts      — gifts DB helpers
-    occasions.ts  — occasions DB helpers
-    holidays.ts   — holidays DB helpers
-    ensureOccasions.ts — rolling system occasion creation
-    notificationSettings.ts — notification settings DB helpers
-    utils.ts      — shared utilities
-  types/index.ts  — all TypeScript types
+    supabase.ts              — Supabase client
+    people.ts                — people DB helpers
+    products.ts              — products DB helpers
+    gifts.ts                 — gifts DB helpers
+    occasions.ts             — occasions DB helpers
+    holidays.ts              — holidays DB helpers
+    ensureOccasions.ts       — rolling system occasion creation
+    notificationSettings.ts  — notification settings DB helpers
+    utils.ts                 — shared utilities
+  types/index.ts             — all TypeScript types
 supabase/
   functions/
-    parse-product-url/index.ts
-    suggest-gifts/index.ts
-  migrations/     — 001–013 (see 13.2)
+    parse-product-url/index.ts   — AI product URL auto-fill (Gemini)
+    suggest-gifts/index.ts       — AI gift suggestions (Gemini)
+    send-reminders/index.ts      — daily email reminders (Resend)
+  migrations/                    — 001–015 (see 13.2)
+vercel.json                      — SPA rewrite rule
 ```
