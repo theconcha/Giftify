@@ -204,12 +204,12 @@ A specific instance of a holiday on a specific date, or a one-off reason for giv
 ### F3 — Gift Recording & Planning
 - Two entry points on the Gifts tab: **"Log past gift"** (terracotta) and **"Plan future gift"** (sage green); also accessible via "Record gift" shortcuts on Person and Occasion detail views
 - Each gift contains exactly one product from the library, one free-text description, or "To be decided" (planned gifts only); multiple gifts can be recorded for the same person and occasion separately
-- Both flows use a 5-step modal with a progress bar and back navigation:
-  1. **Recipients** — select one or more people (searchable)
-  2. **Gift** — "From library" (default), "Free text", or "Decide later" (plan flow only)
-  3. **Occasion** — required; select from existing occasions (past for log flow, upcoming for plan flow); inline "Add occasion" creates a new one on the spot with date validation (past dates only in log flow; today or future only in plan flow)
-  4. **Details** — gift name (auto-suggested as "{Product} for {Recipient}", always editable) + date field ("Date given" for log flow defaulting to today; "Planned date" for plan flow auto-filling from occasion date)
-  5. **Note** — optional personal message
+- Both flows use a 5-step modal with a progress bar, back navigation, and a bold step header question at the top of each step (wording differs between log and plan flows):
+  1. **Recipients** — "Who did you give this to?" / "Who is this gift for?" — select one or more people (searchable); inline "+ Add person" opens a mini-form (first name, last name, optional birthday month + day) with auto-selection on save; "You can add more details from the People tab later" note shown
+  2. **Gift** — "What did you give?" / "What will you give?" — "From library" (default), "Free text", or "Decide later" (plan flow only); in From library mode, "+ Add product" opens a mini-form (URL + ✨ auto-fill, name, price) with auto-selection on save; "+ Add product" is hidden once a product is already selected; "You can add more details from the Products tab later" note shown
+  3. **Occasion** — "What was the occasion?" / "What's the occasion?" — required; select from existing occasions; inline "Add occasion" creates a new one on the spot with date validation (past dates only in log flow; today or future only in plan flow)
+  4. **Details** — "When did you give it?" / "When are you giving it?" — gift name (auto-suggested as "{Product} for {Recipient}", always editable) + date field ("Date given" for log flow defaulting to today; "Planned date" for plan flow auto-filling from occasion date)
+  5. **Note** — "Any notes?" — optional personal message
 - **Planned gifts** show a prominent "Mark as given ✓" button on their detail page; tapping it confirms the actual give date and converts the gift to `given` status
 - Notifications (future): planned gifts trigger reminders before their planned date
 - Gifts can be edited or deleted after recording; deletion requires a confirmation prompt
@@ -444,6 +444,10 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 | Product image display: square area, object-contain, white background with padding — never cropped | ✅ Done |
 | Holidays + Occasions: 15 system holidays, ensureSystemOccasions (rolling lazy creation), Upcoming/Past tabs, calendar view, Add occasion modal with Quick Start chips, Settings holiday management | ✅ Done |
 | Gifts: two entry points (Log past / Plan future), 5-step modal with mode-aware flows, auto-suggested gift name, Upcoming/Given tabs, calendar view, Gift detail with "Mark as given ✓", gift history on Person + Occasion detail | ✅ Done |
+| Gift modal — step headers: each step shows a bold question header; wording differs between log and plan flows | ✅ Done |
+| Gift modal — inline Person creation in Step 1: "+ Add person" opens mini-form (first/last name + optional birthday); auto-selects new person as recipient | ✅ Done |
+| Gift modal — inline Product creation in Step 2 (From library mode): "+ Add product" opens mini-form (URL + ✨ auto-fill, name, price); hidden once a product is already selected | ✅ Done |
+| Combobox: filters by label (contains) and value (prefix match); trailing space triggers exact value match; used for birthday month in gift modal | ✅ Done |
 | Dashboard (Home tab): quick stats, gifts to give, upcoming occasions (90 days), recent gifts given, quick actions, first-time empty state | ✅ Done |
 | AI — parse-product-url Edge Function: URL → Gemini 2.0 Flash → auto-fills product name, price, photo | ✅ Done |
 | AI — suggest-gifts Edge Function: person profile + gift history + products → ranked suggestions | ✅ Done |
