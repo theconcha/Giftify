@@ -13,8 +13,9 @@ export default function Home() {
   const [upcomingOccasions, setUpcomingOccasions] = useState<OccasionWithDetails[]>([])
   const [plannedGifts, setPlannedGifts] = useState<GiftWithDetails[]>([])
   const [recentGifts, setRecentGifts] = useState<GiftWithDetails[]>([])
-  const [peopleCount, setPeopleCount] = useState(0)
-  const [productsCount, setProductsCount] = useState(0)
+  const [peopleGiftedCount, setPeopleGiftedCount] = useState(0)
+  const [giftsGivenCount, setGiftsGivenCount] = useState(0)
+  const [giftsPlannedCount, setGiftsPlannedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isEmpty, setIsEmpty] = useState(false)
 
@@ -23,22 +24,27 @@ export default function Home() {
       setLoading(true)
       await ensureSystemOccasions()
 
-      const [occasionsRes, plannedRes, givenRes, peopleRes, productsRes] = await Promise.all([
+      const [occasionsRes, plannedRes, givenRes, peopleRes, productsRes, giftedRecipientsRes, givenCountRes, plannedCountRes] = await Promise.all([
         fetchOccasions({ tab: 'upcoming', perPage: 5 }),
         fetchGifts({ status: 'planned', perPage: 3 }),
         fetchGifts({ status: 'given', perPage: 5 }),
         supabase.from('people').select('*', { count: 'exact', head: true }).eq('is_archived', false),
         supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_archived', false),
+        supabase.from('gift_recipients').select('person_id, gifts!inner(status)').eq('gifts.status', 'given'),
+        supabase.from('gifts').select('*', { count: 'exact', head: true }).eq('status', 'given'),
+        supabase.from('gifts').select('*', { count: 'exact', head: true }).eq('status', 'planned'),
       ])
 
       const pCount = peopleRes.count ?? 0
       const prCount = productsRes.count ?? 0
+      const giftedPeople = new Set((giftedRecipientsRes.data ?? []).map((r: any) => r.person_id))
 
       setUpcomingOccasions((occasionsRes.data as unknown as OccasionWithDetails[]) ?? [])
       setPlannedGifts((plannedRes.data as unknown as GiftWithDetails[]) ?? [])
       setRecentGifts((givenRes.data as unknown as GiftWithDetails[]) ?? [])
-      setPeopleCount(pCount)
-      setProductsCount(prCount)
+      setPeopleGiftedCount(giftedPeople.size)
+      setGiftsGivenCount(givenCountRes.count ?? 0)
+      setGiftsPlannedCount(plannedCountRes.count ?? 0)
       setIsEmpty(pCount === 0 && prCount === 0)
       setLoading(false)
     }
@@ -81,28 +87,61 @@ export default function Home() {
     <div className="px-4 py-4 space-y-6 pb-8">
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Link to="/people"
           className="bg-white rounded-2xl border border-[#E8E0D8] p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
           <div className="w-10 h-10 rounded-full bg-[#FDF0EB] flex items-center justify-center shrink-0">
             <Users size={20} className="text-[#C2714F]" />
           </div>
           <div>
-            <p className="text-2xl font-extrabold text-[#2D2420] leading-none">{peopleCount}</p>
-            <p className="text-xs text-[#8B7355] mt-0.5">{peopleCount === 1 ? 'Person' : 'People'}</p>
+            <p className="text-2xl font-extrabold text-[#2D2420] leading-none">{peopleGiftedCount}</p>
+            <p className="text-xs text-[#8B7355] mt-0.5">{peopleGiftedCount === 1 ? 'Person received a gift' : 'People received a gift'}</p>
           </div>
         </Link>
-        <Link to="/products"
+        <Link to="/gifts"
           className="bg-white rounded-2xl border border-[#E8E0D8] p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
           <div className="w-10 h-10 rounded-full bg-[#F0F4F0] flex items-center justify-center shrink-0">
-            <Package size={20} className="text-[#7A9E7E]" />
+            <Gift size={20} className="text-[#7A9E7E]" />
           </div>
           <div>
-            <p className="text-2xl font-extrabold text-[#2D2420] leading-none">{productsCount}</p>
-            <p className="text-xs text-[#8B7355] mt-0.5">{productsCount === 1 ? 'Product' : 'Products'}</p>
+            <p className="text-2xl font-extrabold text-[#2D2420] leading-none">{giftsGivenCount}</p>
+            <p className="text-xs text-[#8B7355] mt-0.5">{giftsGivenCount === 1 ? 'Gift given' : 'Gifts given'}</p>
+          </div>
+        </Link>
+        <Link to="/gifts"
+          className="bg-white rounded-2xl border border-[#E8E0D8] p-4 flex items-center gap-3 hover:shadow-md transition-shadow">
+          <div className="w-10 h-10 rounded-full bg-[#F8F3EE] flex items-center justify-center shrink-0">
+            <CalendarPlus size={20} className="text-[#8B7355]" />
+          </div>
+          <div>
+            <p className="text-2xl font-extrabold text-[#2D2420] leading-none">{giftsPlannedCount}</p>
+            <p className="text-xs text-[#8B7355] mt-0.5">{giftsPlannedCount === 1 ? 'Gift planned' : 'Gifts planned'}</p>
           </div>
         </Link>
       </div>
+
+      {/* Quick actions */}
+      <section>
+        <h2 className="font-bold text-[#2D2420] mb-2">Quick actions</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Link to="/gifts"
+            className="flex items-center gap-2 px-3 py-3 bg-[#C2714F] text-white text-sm font-semibold rounded-xl hover:bg-[#A85E3E] transition-colors">
+            <BookOpen size={16} /> Log a gift
+          </Link>
+          <Link to="/gifts"
+            className="flex items-center gap-2 px-3 py-3 bg-[#7A9E7E] text-white text-sm font-semibold rounded-xl hover:bg-[#5C8060] transition-colors">
+            <CalendarPlus size={16} /> Plan a gift
+          </Link>
+          <Link to="/people"
+            className="flex items-center gap-2 px-3 py-3 border border-[#E8E0D8] text-[#2D2420] text-sm font-semibold rounded-xl hover:bg-[#F0E8E0] transition-colors">
+            <Users size={16} /> Add a person
+          </Link>
+          <Link to="/products"
+            className="flex items-center gap-2 px-3 py-3 border border-[#E8E0D8] text-[#2D2420] text-sm font-semibold rounded-xl hover:bg-[#F0E8E0] transition-colors">
+            <Package size={16} /> Add a product
+          </Link>
+        </div>
+      </section>
 
       {/* Planned gifts — only shown if any exist */}
       {plannedGifts.length > 0 && (
@@ -241,29 +280,6 @@ export default function Home() {
             })}
           </div>
         )}
-      </section>
-
-      {/* Quick actions */}
-      <section>
-        <h2 className="font-bold text-[#2D2420] mb-2">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Link to="/gifts"
-            className="flex items-center gap-2 px-3 py-3 bg-[#C2714F] text-white text-sm font-semibold rounded-xl hover:bg-[#A85E3E] transition-colors">
-            <BookOpen size={16} /> Log a gift
-          </Link>
-          <Link to="/gifts"
-            className="flex items-center gap-2 px-3 py-3 bg-[#7A9E7E] text-white text-sm font-semibold rounded-xl hover:bg-[#5C8060] transition-colors">
-            <CalendarPlus size={16} /> Plan a gift
-          </Link>
-          <Link to="/people"
-            className="flex items-center gap-2 px-3 py-3 border border-[#E8E0D8] text-[#2D2420] text-sm font-semibold rounded-xl hover:bg-[#F0E8E0] transition-colors">
-            <Users size={16} /> Add a person
-          </Link>
-          <Link to="/products"
-            className="flex items-center gap-2 px-3 py-3 border border-[#E8E0D8] text-[#2D2420] text-sm font-semibold rounded-xl hover:bg-[#F0E8E0] transition-colors">
-            <Package size={16} /> Add a product
-          </Link>
-        </div>
       </section>
 
     </div>

@@ -264,11 +264,11 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 - Religion is passed as optional context, not as a hard filter
 
 ### F6 — Dashboard / Home
-- **Quick stats row:** People count and Products count as tappable cards linking to their respective tabs
+- **Quick stats row:** Three tappable cards — "People received a gift" (distinct recipients across all given gifts), "Gifts given" (total count), and "Gifts planned" (total count); stacked single-column on mobile, 3-across from `sm` breakpoint up; first links to People tab, other two link to Gifts tab
 - **Gifts to give:** Planned gifts section (only shown when planned gifts exist); shows up to 3 with days-until chips; links to Gifts tab
 - **Upcoming occasions:** Next 5 occasions in the next 90 days, soonest first, with days-until chips; "View all" link to Occasions tab; empty state if none in window
 - **Recent gifts given:** Last 5 given gifts with recipient avatars, occasion, and date; "View all" link to Gifts tab; empty state with "Log your first gift →" link
-- **Quick actions:** Four buttons — Log a gift (terracotta), Plan a gift (sage), Add a person, Add a product
+- **Quick actions:** Four buttons — Log a gift (terracotta), Plan a gift (sage), Add a person, Add a product; own section below Quick stats, 2x2 grid up to `lg`, single row of 4 from `lg` breakpoint up
 - **First-time empty state:** Shown when no people AND no products exist; friendly welcome with two CTAs ("Add the people you love" → People tab, "Add a product to your library" → Products tab); no wizard, no sample data
 
 ### F7 — Gifts List
@@ -329,6 +329,7 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 
 - **Mobile-first:** Core flows designed for 375px width first; expanded for 768px (tablet) and 1024px+ (desktop)
 - **Responsive:** Single-column → 2-column → 3-column grid progression; fluid layouts
+- **Page width:** Main content area is capped at `max-w-[1800px]` (centered) so the app reads as full-width on typical screens while avoiding excessive line lengths on ultra-wide monitors
 - **Warm and personal:** Feels like a thoughtful personal organizer, not an enterprise tool
 - **Fast to use:** Adding a person, recording a gift, and checking history each completable in under 30 seconds
 - **Images never cropped:** Product photos (and all images in the app) must always be displayed in full — never cropped or cut off. Card views use a square image area with a white background and padding; the image is scaled to fit entirely within that area (object-contain). The detail page also shows the full image. Empty space around non-square images is filled with a white or cream background.
@@ -456,6 +457,8 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 | Notifications — Settings → Notifications tab: checkboxes wired to DB, Save button persists preferences | ✅ Done |
 | Notifications — send-reminders Edge Function (daily cron, Resend email) | ✅ Done |
 | App deployed to Vercel | ✅ Done |
+| App-wide max-width container (`max-w-[1800px]`, centered) on main content area | ✅ Done |
+| Layout/responsive design pass (mobile-first → adaptive restructuring across pages); Home dashboard reworked first | 🔄 In progress |
 | Developer setup guide | ❌ Not yet written |
 
 ### 13.2 Database Migrations (run in this order)
