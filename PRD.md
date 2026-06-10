@@ -315,7 +315,7 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
   - Occasions
   - Gifts
   - Products
-- **Header:** App name ("Giftify" in Plus Jakarta Sans, text-based placeholder for MVP) on the left; avatar/gear icon on the right linking to Settings
+- **Header:** App name ("Giftify" in Plus Jakarta Sans, text-based placeholder for MVP) on the left; avatar circle on the right linking to Settings, showing the first letter of the user's display name (set in Settings → Account)
 - **Back navigation:** All detail views show a back chevron ("←") in the top-left of the header labeled with the parent screen name (e.g., "← Occasions"); bottom tab bar remains visible throughout
 
 ### Tablet (768px+) and Desktop (1024px+)
@@ -437,6 +437,7 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 | Project scaffold (React + Vite + TypeScript + Tailwind CSS v4 + Supabase client) | ✅ Done |
 | Plus Jakarta Sans font + brand colors in src/index.css | ✅ Done |
 | App shell: Header, BottomNav (mobile), Sidebar (desktop 768px+), AppShell layout | ✅ Done |
+| Header avatar shows first letter of display name (from Settings → Account) | ✅ Done |
 | Auth: magic link, password sign-in, create account, forgot password, confirmation screens | ✅ Done |
 | People: list (card + table views), detail, add/edit modal, archive/unarchive, delete, search, pagination | ✅ Done |
 | Combobox component: searchable select, shows all options on focus, must select from predefined list | ✅ Done |
