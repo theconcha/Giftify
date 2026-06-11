@@ -265,10 +265,11 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 
 ### F6 — Dashboard / Home
 - **Quick stats row:** Three tappable cards — "People received a gift" (distinct recipients across all given gifts), "Gifts given" (total count), and "Gifts planned" (total count); stacked single-column on mobile, 3-across from `sm` breakpoint up; first links to People tab, other two link to Gifts tab
+- **Below the stats, a two-column layout from `sm` up** (single column on mobile): a left column (2/3 width) stacking the gift/occasion lists, and a right column (1/3 width, same width as one stat card) for Quick actions
 - **Gifts to give:** Planned gifts section (only shown when planned gifts exist); shows up to 3 with days-until chips; links to Gifts tab
 - **Upcoming occasions:** Next 5 occasions in the next 90 days, soonest first, with days-until chips; "View all" link to Occasions tab; empty state if none in window
 - **Recent gifts given:** Last 5 given gifts with recipient avatars, occasion, and date; "View all" link to Gifts tab; empty state with "Log your first gift →" link
-- **Quick actions:** Four buttons — Log a gift (terracotta), Plan a gift (sage), Add a person, Add a product; own section below Quick stats, 2x2 grid up to `lg`, single row of 4 from `lg` breakpoint up
+- **Quick actions:** Single card with a vertical list of four rows — Log a gift (terracotta icon), Plan a gift (sage icon), Add a person, Add a product (neutral icons) — each with a label and chevron. The card stretches to match the height of the lists in the left column (extra space sits empty below the rows). On mobile, this section reorders to appear above the lists, directly below Quick stats.
 - **First-time empty state:** Shown when no people AND no products exist; friendly welcome with two CTAs ("Add the people you love" → People tab, "Add a product to your library" → Products tab); no wizard, no sample data
 
 ### F7 — Gifts List
@@ -592,7 +593,7 @@ Page-by-page application of the [Responsive Layout Strategy](#responsive-layout-
 | # | Area | Plan | Status |
 |---|---|---|---|
 | 0 | Foundational page width | Cap main content at `max-w-[1800px]`, centered, applied app-wide via `AppShell`'s `<main>` | ✅ Done |
-| 1 | Home dashboard | Quick stats: 1→3 columns (`grid-cols-1 sm:grid-cols-3`); Quick actions: own section below stats, 2→4 columns (`grid-cols-2 lg:grid-cols-4`, single row at `lg`+) | ✅ Done |
+| 1 | Home dashboard | Quick stats: 1→3 columns (`grid-cols-1 sm:grid-cols-3`). Below stats, a second `grid-cols-1 sm:grid-cols-3` grid: left column (`sm:col-span-2`) stacks Gifts to give / Upcoming occasions / Recent gifts given; right column (`sm:col-span-1`) is a single Quick actions card (vertical list of color-coded icon rows), stretched to match the left column's height via grid `align-items: stretch` + `flex-1`. On mobile, Quick actions reorders above the lists via `order-1`/`order-2`. | ✅ Done |
 | 2 | Card grids — People & Products | Add `xl`/`2xl` column steps so card size stays reasonable as width grows (e.g., People → 4 cols, Products → 5–6 cols at very wide viewports), bounded by the page-width cap from #0 | ⏳ Planned |
 | 3 | List/table views — Occasions, Gifts, People/Products table mode | Restructure single-column flex-row list items into real multi-column data grids at `lg`+ (Name / Occasion or Category / Date / Status / Actions as columns) instead of one wide row | ⏳ Planned |
 | 4 | Detail pages — master-detail panes | Per object: OccasionDetail (recipients + gifts lists side-by-side at `lg`+), GiftDetail (details + recipients split into two panes at `lg`+), ProductDetail (photo left / details right at `lg`+), PersonDetail (already has an AI-suggestions sidebar — consider extending similar side-panel patterns to other objects) | ⏳ Planned |
