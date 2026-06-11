@@ -328,12 +328,33 @@ All AI features run via Supabase Edge Functions so the Gemini API key is never e
 ## 8. Design Principles
 
 - **Mobile-first:** Core flows designed for 375px width first; expanded for 768px (tablet) and 1024px+ (desktop)
-- **Responsive:** Single-column → 2-column → 3-column grid progression; fluid layouts
+- **Responsive:** Adaptive layout restructuring at breakpoints (see "Responsive Layout Strategy" below), not just proportional scaling
 - **Page width:** Main content area is capped at `max-w-[1800px]` (centered) so the app reads as full-width on typical screens while avoiding excessive line lengths on ultra-wide monitors
 - **Warm and personal:** Feels like a thoughtful personal organizer, not an enterprise tool
 - **Fast to use:** Adding a person, recording a gift, and checking history each completable in under 30 seconds
 - **Images never cropped:** Product photos (and all images in the app) must always be displayed in full — never cropped or cut off. Card views use a square image area with a white background and padding; the image is scaled to fit entirely within that area (object-contain). The detail page also shows the full image. Empty space around non-square images is filled with a white or cream background.
 - **Flexible forms:** Select fields (gender, pronouns, religion, categories, etc.) support two interaction methods — users can either scroll and click a predefined option, or start typing to filter the list and then select from the narrowed results. Typing alone does not store a value; a selection from the predefined list is always required. This pattern applies consistently across all select/dropdown fields in the app.
+
+### Responsive Layout Strategy
+
+Giftify deliberately favors **adaptive layout restructuring** over **fluid responsive scaling** wherever the two diverge:
+
+- **Fluid responsive scaling** — the layout adjusts proportionally by stretching, shrinking, or stacking; everything scales dynamically to fill available width. Feels continuous/"elastic," but on wide screens it tends to produce disproportionately wide cards, stretched-out text fields, and large empty gaps. Faster to build, but wastes space and can hurt legibility.
+- **Adaptive layout restructuring** — the layout follows specific rules per breakpoint; instead of stretching a card or field, the arrangement itself changes shape (new grid columns, side-by-side panes, grouped/regrouped sections). Feels purpose-built/"custom," and uses extra width intentionally.
+
+**Approach:** Pair the wide page-width cap (`max-w-[1800px]`, above) with adaptive restructuring at breakpoints. The cap keeps individual elements (cards, form fields, table rows) from becoming absurdly wide; restructuring uses any extra width purposefully (more grid columns, additional tiles/panes, multi-column forms) rather than just stretching what's there. Fluid scaling (`flex-1`, `w-full`, etc.) is still used *within* a given arrangement — it's the overall arrangement that should change at breakpoints, not just the proportions.
+
+**Breakpoints used (Tailwind v4 defaults — no custom breakpoints defined):**
+
+| Breakpoint | Width | Used for |
+|---|---|---|
+| (default) | <640px | Mobile: single column, bottom tab bar |
+| `sm` | ≥640px | First adaptive step for tight elements (e.g., dashboard stat tiles go 1→3 columns) |
+| `md` | ≥768px | Sidebar replaces bottom tab bar; most list/grid layouts add their first extra column |
+| `lg` | ≥1024px | Major restructuring breakpoint — multi-column grids, side-by-side panes, single-row action bars |
+| `xl` / `2xl` | ≥1280px / ≥1536px | Further column increases on dense grids where extra width helps (e.g., product cards) |
+
+See section 13.6 (Layout Restructuring Roadmap) for the page-by-page plan and status.
 
 ### Color Palette
 
@@ -563,3 +584,21 @@ supabase/
   migrations/                    — 001–015 (see 13.2)
 vercel.json                      — SPA rewrite rule
 ```
+
+### 13.6 Layout Restructuring Roadmap
+
+Page-by-page application of the [Responsive Layout Strategy](#responsive-layout-strategy) (section 8). Tackled one item at a time — discuss reflow options, confirm, then build.
+
+| # | Area | Plan | Status |
+|---|---|---|---|
+| 0 | Foundational page width | Cap main content at `max-w-[1800px]`, centered, applied app-wide via `AppShell`'s `<main>` | ✅ Done |
+| 1 | Home dashboard | Quick stats: 1→3 columns (`grid-cols-1 sm:grid-cols-3`); Quick actions: own section below stats, 2→4 columns (`grid-cols-2 lg:grid-cols-4`, single row at `lg`+) | ✅ Done |
+| 2 | Card grids — People & Products | Add `xl`/`2xl` column steps so card size stays reasonable as width grows (e.g., People → 4 cols, Products → 5–6 cols at very wide viewports), bounded by the page-width cap from #0 | ⏳ Planned |
+| 3 | List/table views — Occasions, Gifts, People/Products table mode | Restructure single-column flex-row list items into real multi-column data grids at `lg`+ (Name / Occasion or Category / Date / Status / Actions as columns) instead of one wide row | ⏳ Planned |
+| 4 | Detail pages — master-detail panes | Per object: OccasionDetail (recipients + gifts lists side-by-side at `lg`+), GiftDetail (details + recipients split into two panes at `lg`+), ProductDetail (photo left / details right at `lg`+), PersonDetail (already has an AI-suggestions sidebar — consider extending similar side-panel patterns to other objects) | ⏳ Planned |
+| 5 | Forms/modals | At `lg`+, widen entity-edit modals (e.g., `max-w-xl`) and pair related fields into 2-column rows (PersonForm: email/phone, address fields; ProductForm: name/price, SKU/category). GiftForm's step-wizard stays narrow/focused at all widths | ⏳ Planned |
+| 6 | Settings page | At `lg`+, switch from top pill-tab navigation to a left-side vertical tab nav + content pane; Profile form fields go 2-column | ⏳ Planned |
+| 7 | Calendar views (Occasions, Gifts) | At `lg`+, place the calendar (~60% width) and the selected-day detail list (~40% width) side-by-side instead of stacked | ⏳ Planned |
+
+**Approaches tried and rejected (avoid repeating):**
+- Home dashboard (#1): merging Quick actions onto the same row as Quick stats (`flex flex-col md:flex-row`, grouped reflow) — reverted in favor of keeping them as separate sections, each with its own column progression.
